@@ -21,8 +21,9 @@ const double SQSIZE = 2.0 / MSIZE;
 
 int maze[MSIZE][MSIZE];
 Point2D* parent[MSIZE][MSIZE];
+Point2D* startPoint;
 
-bool bfs_started = false;
+bool bfs_started = false, dfs_started = false;
 
 // gray queue
 vector <Point2D*> gray;
@@ -47,6 +48,7 @@ void init()
 	maze[MSIZE / 2][MSIZE / 2] = START;
 	maze[rand() % MSIZE][rand() % MSIZE] = TARGET;
 	pt = new Point2D(MSIZE / 2, MSIZE / 2);
+	startPoint = pt;
 	// save the start in gray
 	gray.push_back(pt);
 
@@ -78,6 +80,19 @@ void SetupMaze()
 				if (rand() % 100 < 25) maze[i][j] = WALL;
 			}
 		}
+}
+
+void Clean()
+{
+	for (int i = 0; i < MSIZE; i++)
+	{
+		for (int j = 0; j < MSIZE; j++)
+		{
+			if (maze[i][j] != START && maze[i][j] != TARGET&& maze[i][j] != WALL)
+				maze[i][j] = SPACE;
+		}
+	}
+	gray.push_back(startPoint);
 }
 
 void ShowPath(Point2D* pt)
@@ -171,12 +186,93 @@ void BfsIteration()
 	}
 }
 
+void DfsIteration()
+{
+	Point2D* pt;
+	Point2D* pt1;
+
+	if (gray.empty())
+	{
+		dfs_started = false;// there is no path to the target
+	}
+	else // gray is not empty
+	{
+		pt = gray[gray.size() - 1]; // this will be the parent
+		gray.pop_back(); // pop
+
+						 // paint pt VISITED
+		if (maze[pt->GetY()][pt->GetX()] == TARGET) // we have found the target
+		{
+			dfs_started = false;
+		}
+		else
+		{
+			if (maze[pt->GetY()][pt->GetX()] != START)
+				maze[pt->GetY()][pt->GetX()] = VISITED; // y is i, x is j!!! 
+														// check non-visited neighbors
+														// go up
+			if (maze[pt->GetY() + 1][pt->GetX()] == TARGET)
+			{
+				dfs_started = false;
+
+			}
+			if (dfs_started && maze[pt->GetY() + 1][pt->GetX()] == SPACE)
+			{ // add it to gray
+				maze[pt->GetY() + 1][pt->GetX()] = GRAY;
+				parent[pt->GetY() + 1][pt->GetX()] = pt;
+				pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
+				gray.push_back(pt1);
+			}
+			// go down
+			if (maze[pt->GetY() - 1][pt->GetX()] == TARGET)
+			{
+				dfs_started = false;
+
+			}
+			if (dfs_started && maze[pt->GetY() - 1][pt->GetX()] == SPACE)
+			{ // add it to gray
+				maze[pt->GetY() - 1][pt->GetX()] = GRAY;
+				parent[pt->GetY() - 1][pt->GetX()] = pt;
+				pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
+				gray.push_back(pt1);
+			}
+			// go right
+			if (maze[pt->GetY()][pt->GetX() + 1] == TARGET)
+			{
+				dfs_started = false;
+
+			}
+			if (dfs_started && maze[pt->GetY()][pt->GetX() + 1] == SPACE)
+			{ // add it to gray
+				parent[pt->GetY()][pt->GetX() + 1] = pt;
+				maze[pt->GetY()][pt->GetX() + 1] = GRAY;
+				pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
+				gray.push_back(pt1);
+			}
+			// go left
+			if (dfs_started && maze[pt->GetY()][pt->GetX() - 1] == TARGET)
+			{
+				dfs_started = false;
+
+			}
+			if (dfs_started && maze[pt->GetY()][pt->GetX() - 1] == SPACE)
+			{ // add it to gray
+				maze[pt->GetY()][pt->GetX() - 1] = GRAY;
+				parent[pt->GetY()][pt->GetX() - 1] = pt;
+				pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
+				gray.push_back(pt1);
+			}
+			if (!dfs_started) // target was found
+				ShowPath(pt);
+		}
+	}
+}
 
 void DrawMaze()
 {
 	int i, j;
 
-	for (i = 0; i<MSIZE; i++)
+	for (i = 0; i < MSIZE; i++)
 		for (j = 0; j < MSIZE; j++)
 		{
 			switch (maze[i][j])
@@ -230,6 +326,8 @@ void idle()
 {
 	if (bfs_started)
 		BfsIteration();
+	if (dfs_started)
+		DfsIteration();
 	glutPostRedisplay();// calls indirectly to display
 }
 
@@ -240,7 +338,14 @@ void Menu(int choice)
 	case 1:
 		bfs_started = true;
 		break;
+	case 2:
+		dfs_started = true;
+		break;
+	case 4:
+		Clean();
+		break;
 	}
+
 }
 
 void main(int argc, char* argv[])
@@ -259,6 +364,7 @@ void main(int argc, char* argv[])
 	glutAddMenuEntry("BFS", 1);
 	glutAddMenuEntry("DFS", 2);
 	glutAddMenuEntry("A*", 3);
+	glutAddMenuEntry("Clean", 4);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 
 
