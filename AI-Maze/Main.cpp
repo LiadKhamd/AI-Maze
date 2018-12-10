@@ -3,6 +3,7 @@
 #include <time.h>
 #include <vector>
 #include "Point2D.h"
+
 using namespace std;
 
 const int W = 600; // window width
@@ -21,20 +22,18 @@ const double SQSIZE = 2.0 / MSIZE;
 
 int maze[MSIZE][MSIZE];
 Point2D* parent[MSIZE][MSIZE];
-Point2D* startPoint;
+Point2D* startPoint, *endPoint;
 
-bool bfs_started = false, dfs_started = false;
+bool bfs_started = false, dfs_started = false, bfs_started_start_end = false;
 
 // gray queue
 vector <Point2D*> gray;
-
 
 void SetupMaze();
 
 void init()
 {
 	int i, j;
-	Point2D* pt;
 
 	srand(time(0));
 
@@ -45,15 +44,17 @@ void init()
 
 	SetupMaze();
 
-	maze[MSIZE / 2][MSIZE / 2] = START;
-	maze[rand() % MSIZE][rand() % MSIZE] = TARGET;
-	pt = new Point2D(MSIZE / 2, MSIZE / 2);
-	startPoint = pt;
+	startPoint = new Point2D(MSIZE / 2, MSIZE / 2);
+	maze[startPoint->GetX()][startPoint->GetY()] = START;
+
+	//endPoint
+	endPoint = new Point2D(rand() % MSIZE, rand() % MSIZE);
+	maze[endPoint->GetX()][endPoint->GetY()] = TARGET;
+
 	// save the start in gray
-	gray.push_back(pt);
+	gray.push_back(startPoint);
 
-
-	glClearColor(0.7, 0.7, 0.7, 0);
+	glClearColor(GLclampf(0.7), GLclampf(0.7), GLclampf(0.7), 0);
 
 	glOrtho(-1, 1, -1, 1, -1, 1);
 }
@@ -186,6 +187,88 @@ void BfsIteration()
 	}
 }
 
+void BfsIterationStartEnd()
+{
+	//Point2D* pt;
+	//Point2D* pt1;
+
+	//if (gray.empty())
+	//{
+	//	bfs_started_start_end = false;// there is no path to the target
+	//}
+	//else // gray is not empty
+	//{
+	//	pt = gray[0]; // this will be the parent
+	//	gray.erase(gray.begin()); // dequeue
+
+	//							  // paint pt VISITED
+	//	if (maze[pt->GetY()][pt->GetX()] == TARGET) // we have found the target
+	//	{
+	//		bfs_started = false;
+	//	}
+	//	else
+	//	{
+	//		if (maze[pt->GetY()][pt->GetX()] != START)
+	//			maze[pt->GetY()][pt->GetX()] = VISITED; // y is i, x is j!!! 
+	//													// check non-visited neighbors
+	//													// go up
+	//		if (maze[pt->GetY() + 1][pt->GetX()] == TARGET)
+	//		{
+	//			bfs_started = false;
+
+	//		}
+	//		if (bfs_started && maze[pt->GetY() + 1][pt->GetX()] == SPACE)
+	//		{ // add it to gray
+	//			maze[pt->GetY() + 1][pt->GetX()] = GRAY;
+	//			parent[pt->GetY() + 1][pt->GetX()] = pt;
+	//			pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
+	//			gray.push_back(pt1);
+	//		}
+	//		// go down
+	//		if (maze[pt->GetY() - 1][pt->GetX()] == TARGET)
+	//		{
+	//			bfs_started = false;
+
+	//		}
+	//		if (bfs_started && maze[pt->GetY() - 1][pt->GetX()] == SPACE)
+	//		{ // add it to gray
+	//			maze[pt->GetY() - 1][pt->GetX()] = GRAY;
+	//			parent[pt->GetY() - 1][pt->GetX()] = pt;
+	//			pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
+	//			gray.push_back(pt1);
+	//		}
+	//		// go right
+	//		if (maze[pt->GetY()][pt->GetX() + 1] == TARGET)
+	//		{
+	//			bfs_started = false;
+
+	//		}
+	//		if (bfs_started && maze[pt->GetY()][pt->GetX() + 1] == SPACE)
+	//		{ // add it to gray
+	//			parent[pt->GetY()][pt->GetX() + 1] = pt;
+	//			maze[pt->GetY()][pt->GetX() + 1] = GRAY;
+	//			pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
+	//			gray.push_back(pt1);
+	//		}
+	//		// go left
+	//		if (bfs_started && maze[pt->GetY()][pt->GetX() - 1] == TARGET)
+	//		{
+	//			bfs_started = false;
+
+	//		}
+	//		if (bfs_started && maze[pt->GetY()][pt->GetX() - 1] == SPACE)
+	//		{ // add it to gray
+	//			maze[pt->GetY()][pt->GetX() - 1] = GRAY;
+	//			parent[pt->GetY()][pt->GetX() - 1] = pt;
+	//			pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
+	//			gray.push_back(pt1);
+	//		}
+	//		if (!bfs_started) // target was found
+	//			ShowPath(pt);
+	//	}
+	//}
+}
+
 void DfsIteration()
 {
 	Point2D* pt;
@@ -308,10 +391,7 @@ void DrawMaze()
 			glVertex2d(j*SQSIZE - 1 - SQSIZE / 2, i*SQSIZE - 1 - SQSIZE / 2);
 			glEnd();
 		}
-
 }
-
-
 
 void display()
 {
@@ -326,6 +406,10 @@ void idle()
 {
 	if (bfs_started)
 		BfsIteration();
+	if (bfs_started_start_end) {
+		gray.push_back(endPoint);
+		BfsIterationStartEnd();
+	}
 	if (dfs_started)
 		DfsIteration();
 	glutPostRedisplay();// calls indirectly to display
@@ -339,9 +423,12 @@ void Menu(int choice)
 		bfs_started = true;
 		break;
 	case 2:
+		bfs_started_start_end = true;
+		break;
+	case 3:
 		dfs_started = true;
 		break;
-	case 4:
+	case 5:
 		Clean();
 		break;
 	}
@@ -354,7 +441,7 @@ void main(int argc, char* argv[])
 	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
 	glutInitWindowSize(W, H);
 	glutInitWindowPosition(200, 100);
-	glutCreateWindow("Digits Example ");
+	glutCreateWindow("Maze");
 
 	glutDisplayFunc(display); // refresh function
 	glutIdleFunc(idle); // idle: when nothing happens
@@ -362,9 +449,10 @@ void main(int argc, char* argv[])
 
 	glutCreateMenu(Menu);
 	glutAddMenuEntry("BFS", 1);
-	glutAddMenuEntry("DFS", 2);
-	glutAddMenuEntry("A*", 3);
-	glutAddMenuEntry("Clean", 4);
+	glutAddMenuEntry("BFS Start-End", 2);
+	glutAddMenuEntry("DFS", 3);
+	glutAddMenuEntry("A*", 4);
+	glutAddMenuEntry("Clean", 5);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
 
 

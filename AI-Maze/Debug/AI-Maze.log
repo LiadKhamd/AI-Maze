@@ -1,4 +1,3 @@
 ﻿  Main.cpp
-d:\projects\visual studio\ai-maze\ai-maze\main.cpp(56): warning C4305: 'argument': truncation from 'double' to 'GLclampf'
   AI-Maze.vcxproj -> D:\Projects\Visual studio\AI-Maze\Debug\AI-Maze.exe
   AI-Maze.vcxproj -> D:\Projects\Visual studio\AI-Maze\Debug\AI-Maze.pdb (Full PDB)
