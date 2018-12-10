@@ -16,6 +16,8 @@ const int START = 4;
 const int TARGET = 5;
 const int GRAY = 6;
 const int PATH = 7;
+const int VISITED_FROM_END_TO_START = 8;
+const int GRAY_FROM_END = 9;
 
 const int MSIZE = 100;
 const double SQSIZE = 2.0 / MSIZE;
@@ -27,7 +29,8 @@ Point2D* startPoint, *endPoint;
 bool bfs_started = false, dfs_started = false, bfs_started_start_end = false;
 
 // gray queue
-vector <Point2D*> gray;
+vector <Point2D*> grayFromStart;
+vector <Point2D*> grayFromEnd;
 
 void SetupMaze();
 
@@ -45,14 +48,15 @@ void init()
 	SetupMaze();
 
 	startPoint = new Point2D(MSIZE / 2, MSIZE / 2);
-	maze[startPoint->GetX()][startPoint->GetY()] = START;
+	maze[startPoint->GetY()][startPoint->GetX()] = START;
 
 	//endPoint
 	endPoint = new Point2D(rand() % MSIZE, rand() % MSIZE);
-	maze[endPoint->GetX()][endPoint->GetY()] = TARGET;
+	maze[endPoint->GetY()][endPoint->GetX()] = TARGET;
 
 	// save the start in gray
-	gray.push_back(startPoint);
+	grayFromStart.push_back(startPoint);
+	grayFromEnd.push_back(endPoint);
 
 	glClearColor(GLclampf(0.7), GLclampf(0.7), GLclampf(0.7), 0);
 
@@ -85,6 +89,9 @@ void SetupMaze()
 
 void Clean()
 {
+	bfs_started = false;
+	bfs_started_start_end = false;
+	dfs_started = false;
 	for (int i = 0; i < MSIZE; i++)
 	{
 		for (int j = 0; j < MSIZE; j++)
@@ -93,7 +100,12 @@ void Clean()
 				maze[i][j] = SPACE;
 		}
 	}
-	gray.push_back(startPoint);
+	while (!grayFromStart.empty())
+		grayFromStart.erase(grayFromStart.begin());
+	while (!grayFromEnd.empty())
+		grayFromEnd.erase(grayFromEnd.begin());
+	grayFromStart.push_back(startPoint);
+	grayFromEnd.push_back(endPoint);
 }
 
 void ShowPath(Point2D* pt)
@@ -110,16 +122,16 @@ void BfsIteration()
 	Point2D* pt;
 	Point2D* pt1;
 
-	if (gray.empty())
+	if (grayFromStart.empty())
 	{
 		bfs_started = false;// there is no path to the target
 	}
 	else // gray is not empty
 	{
-		pt = gray[0]; // this will be the parent
-		gray.erase(gray.begin()); // dequeue
+		pt = grayFromStart[0]; // this will be the parent
+		grayFromStart.erase(grayFromStart.begin()); // dequeue
 
-								  // paint pt VISITED
+// paint pt VISITED
 		if (maze[pt->GetY()][pt->GetX()] == TARGET) // we have found the target
 		{
 			bfs_started = false;
@@ -140,7 +152,7 @@ void BfsIteration()
 				maze[pt->GetY() + 1][pt->GetX()] = GRAY;
 				parent[pt->GetY() + 1][pt->GetX()] = pt;
 				pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go down
 			if (maze[pt->GetY() - 1][pt->GetX()] == TARGET)
@@ -153,7 +165,7 @@ void BfsIteration()
 				maze[pt->GetY() - 1][pt->GetX()] = GRAY;
 				parent[pt->GetY() - 1][pt->GetX()] = pt;
 				pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go right
 			if (maze[pt->GetY()][pt->GetX() + 1] == TARGET)
@@ -166,7 +178,7 @@ void BfsIteration()
 				parent[pt->GetY()][pt->GetX() + 1] = pt;
 				maze[pt->GetY()][pt->GetX() + 1] = GRAY;
 				pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go left
 			if (bfs_started && maze[pt->GetY()][pt->GetX() - 1] == TARGET)
@@ -179,7 +191,7 @@ void BfsIteration()
 				maze[pt->GetY()][pt->GetX() - 1] = GRAY;
 				parent[pt->GetY()][pt->GetX() - 1] = pt;
 				pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			if (!bfs_started) // target was found
 				ShowPath(pt);
@@ -187,86 +199,222 @@ void BfsIteration()
 	}
 }
 
+Point2D* ChangeDirection(Point2D* pt, int y, int x)
+{
+	Point2D* temp = new Point2D(x, y), *temp2;
+	do
+	{
+		temp2 = temp;
+		temp = parent[temp->GetY()][temp->GetX()];
+		parent[y][x] = pt;
+		pt = temp2;
+		x = temp->GetX();
+		y = temp->GetY();
+	} while (maze[temp->GetY()][temp->GetX()] != TARGET);
+	return temp2;
+}
+
 void BfsIterationStartEnd()
 {
-	//Point2D* pt;
-	//Point2D* pt1;
+	Point2D* pt;
+	Point2D* pt1;
 
-	//if (gray.empty())
-	//{
-	//	bfs_started_start_end = false;// there is no path to the target
-	//}
-	//else // gray is not empty
-	//{
-	//	pt = gray[0]; // this will be the parent
-	//	gray.erase(gray.begin()); // dequeue
+	if (grayFromStart.empty() || grayFromEnd.empty())
+	{
+		bfs_started_start_end = false;// there is no path to the target
+	}
+	else // gray is not empty
+	{
+		pt = grayFromStart[0]; // this will be the parent
+		grayFromStart.erase(grayFromStart.begin()); // dequeue
 
-	//							  // paint pt VISITED
-	//	if (maze[pt->GetY()][pt->GetX()] == TARGET) // we have found the target
-	//	{
-	//		bfs_started = false;
-	//	}
-	//	else
-	//	{
-	//		if (maze[pt->GetY()][pt->GetX()] != START)
-	//			maze[pt->GetY()][pt->GetX()] = VISITED; // y is i, x is j!!! 
-	//													// check non-visited neighbors
-	//													// go up
-	//		if (maze[pt->GetY() + 1][pt->GetX()] == TARGET)
-	//		{
-	//			bfs_started = false;
+								  // paint pt VISITED
+		if (maze[pt->GetY()][pt->GetX()] == TARGET || maze[pt->GetY()][pt->GetX()] == VISITED_FROM_END_TO_START) // we have found the target
+		{
+			bfs_started_start_end = false;
+		}
+		else
+		{
+			if (maze[pt->GetY()][pt->GetX()] != START)
+				maze[pt->GetY()][pt->GetX()] = VISITED; // y is i, x is j!!! 
+														// check non-visited neighbors
+														// go up
+			if (maze[pt->GetY() + 1][pt->GetX()] == TARGET)
+			{
+				bfs_started_start_end = false;
 
-	//		}
-	//		if (bfs_started && maze[pt->GetY() + 1][pt->GetX()] == SPACE)
-	//		{ // add it to gray
-	//			maze[pt->GetY() + 1][pt->GetX()] = GRAY;
-	//			parent[pt->GetY() + 1][pt->GetX()] = pt;
-	//			pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
-	//			gray.push_back(pt1);
-	//		}
-	//		// go down
-	//		if (maze[pt->GetY() - 1][pt->GetX()] == TARGET)
-	//		{
-	//			bfs_started = false;
+			}
+			if (bfs_started_start_end && maze[pt->GetY() + 1][pt->GetX()] == GRAY_FROM_END)
+			{
+				bfs_started_start_end = false;
+				pt = ChangeDirection(pt, pt->GetY() + 1, pt->GetX());
+			}
+			if (bfs_started_start_end && maze[pt->GetY() + 1][pt->GetX()] == SPACE)
+			{ // add it to gray
+				maze[pt->GetY() + 1][pt->GetX()] = GRAY;
+				parent[pt->GetY() + 1][pt->GetX()] = pt;
+				pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
+				grayFromStart.push_back(pt1);
+			}
+			// go down
+			if (bfs_started_start_end &&maze[pt->GetY() - 1][pt->GetX()] == TARGET)
+			{
+				bfs_started_start_end = false;
 
-	//		}
-	//		if (bfs_started && maze[pt->GetY() - 1][pt->GetX()] == SPACE)
-	//		{ // add it to gray
-	//			maze[pt->GetY() - 1][pt->GetX()] = GRAY;
-	//			parent[pt->GetY() - 1][pt->GetX()] = pt;
-	//			pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
-	//			gray.push_back(pt1);
-	//		}
-	//		// go right
-	//		if (maze[pt->GetY()][pt->GetX() + 1] == TARGET)
-	//		{
-	//			bfs_started = false;
+			}
+			if (bfs_started_start_end &&maze[pt->GetY() - 1][pt->GetX()] == GRAY_FROM_END)
+			{
+				bfs_started_start_end = false;
+				pt = ChangeDirection(pt, pt->GetY() - 1, pt->GetX());
+			}
+			if (bfs_started_start_end && maze[pt->GetY() - 1][pt->GetX()] == SPACE)
+			{ // add it to gray
+				maze[pt->GetY() - 1][pt->GetX()] = GRAY;
+				parent[pt->GetY() - 1][pt->GetX()] = pt;
+				pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
+				grayFromStart.push_back(pt1);
+			}
+			// go right
+			if (bfs_started_start_end &&maze[pt->GetY()][pt->GetX() + 1] == TARGET)
+			{
+				bfs_started_start_end = false;
 
-	//		}
-	//		if (bfs_started && maze[pt->GetY()][pt->GetX() + 1] == SPACE)
-	//		{ // add it to gray
-	//			parent[pt->GetY()][pt->GetX() + 1] = pt;
-	//			maze[pt->GetY()][pt->GetX() + 1] = GRAY;
-	//			pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
-	//			gray.push_back(pt1);
-	//		}
-	//		// go left
-	//		if (bfs_started && maze[pt->GetY()][pt->GetX() - 1] == TARGET)
-	//		{
-	//			bfs_started = false;
+			}
+			if (bfs_started_start_end &&maze[pt->GetY()][pt->GetX() + 1] == GRAY_FROM_END)
+			{
+				bfs_started_start_end = false;
+				pt = ChangeDirection(pt, pt->GetY(), pt->GetX() + 1);
+			}
+			if (bfs_started_start_end && maze[pt->GetY()][pt->GetX() + 1] == SPACE)
+			{ // add it to gray
+				parent[pt->GetY()][pt->GetX() + 1] = pt;
+				maze[pt->GetY()][pt->GetX() + 1] = GRAY;
+				pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
+				grayFromStart.push_back(pt1);
+			}
+			// go left
+			if (bfs_started_start_end && maze[pt->GetY()][pt->GetX() - 1] == TARGET)
+			{
+				bfs_started_start_end = false;
 
-	//		}
-	//		if (bfs_started && maze[pt->GetY()][pt->GetX() - 1] == SPACE)
-	//		{ // add it to gray
-	//			maze[pt->GetY()][pt->GetX() - 1] = GRAY;
-	//			parent[pt->GetY()][pt->GetX() - 1] = pt;
-	//			pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
-	//			gray.push_back(pt1);
-	//		}
-	//		if (!bfs_started) // target was found
-	//			ShowPath(pt);
-	//	}
-	//}
+			}
+			if (bfs_started_start_end &&maze[pt->GetY()][pt->GetX() - 1] == GRAY_FROM_END)
+			{
+				bfs_started_start_end = false;
+				pt = ChangeDirection(pt, pt->GetY(), pt->GetX() - 1);
+			}
+			if (bfs_started_start_end && maze[pt->GetY()][pt->GetX() - 1] == SPACE)
+			{ // add it to gray
+				maze[pt->GetY()][pt->GetX() - 1] = GRAY;
+				parent[pt->GetY()][pt->GetX() - 1] = pt;
+				pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
+				grayFromStart.push_back(pt1);
+			}
+			if (!bfs_started_start_end) // target was found
+				ShowPath(pt);
+			else
+			{
+				if (bfs_started_start_end && (grayFromStart.empty() || grayFromEnd.empty()))
+				{
+					bfs_started_start_end = false;// there is no path to the target
+				}
+				else
+				{
+					pt = grayFromEnd[0]; // this will be the parent
+					grayFromEnd.erase(grayFromEnd.begin()); // dequeue
+
+					if (bfs_started_start_end && (maze[pt->GetY()][pt->GetX()] == START || maze[pt->GetY()][pt->GetX()] == VISITED)) // we have found the target
+					{
+						bfs_started_start_end = false;
+					}
+					else
+					{
+						if (bfs_started_start_end && maze[pt->GetY()][pt->GetX()] != TARGET)
+							maze[pt->GetY()][pt->GetX()] = VISITED_FROM_END_TO_START; // y is i, x is j!!! 
+																	// check non-visited neighbors
+																	// go up
+						if (bfs_started_start_end && maze[pt->GetY() + 1][pt->GetX()] == START)
+						{
+							bfs_started_start_end = false;
+
+						}
+						if (bfs_started_start_end && maze[pt->GetY() + 1][pt->GetX()] == GRAY)
+						{
+							bfs_started_start_end = false;
+							pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
+							pt = ChangeDirection(pt1, pt->GetY(), pt->GetX());
+						}
+						if (bfs_started_start_end && maze[pt->GetY() + 1][pt->GetX()] == SPACE)
+						{ // add it to gray
+							maze[pt->GetY() + 1][pt->GetX()] = GRAY_FROM_END;
+							parent[pt->GetY() + 1][pt->GetX()] = pt;
+							pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
+							grayFromEnd.push_back(pt1);
+						}
+						// go down
+						if (bfs_started_start_end && maze[pt->GetY() - 1][pt->GetX()] == START)
+						{
+							bfs_started_start_end = false;
+
+						}
+						if (bfs_started_start_end && maze[pt->GetY() - 1][pt->GetX()] == GRAY)
+						{
+							bfs_started_start_end = false;
+							pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
+							pt = ChangeDirection(pt1, pt->GetY(), pt->GetX());
+						}
+						if (bfs_started_start_end && maze[pt->GetY() - 1][pt->GetX()] == SPACE)
+						{ // add it to gray
+							maze[pt->GetY() - 1][pt->GetX()] = GRAY_FROM_END;
+							parent[pt->GetY() - 1][pt->GetX()] = pt;
+							pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
+							grayFromEnd.push_back(pt1);
+						}
+						// go right
+						if (bfs_started_start_end &&maze[pt->GetY()][pt->GetX() + 1] == START)
+						{
+							bfs_started_start_end = false;
+
+						}
+						if (bfs_started_start_end &&maze[pt->GetY()][pt->GetX() + 1] == GRAY)
+						{
+							bfs_started_start_end = false;
+							pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
+							pt = ChangeDirection(pt1, pt->GetY(), pt->GetX());
+						}
+						if (bfs_started_start_end && maze[pt->GetY()][pt->GetX() + 1] == SPACE)
+						{ // add it to gray
+							parent[pt->GetY()][pt->GetX() + 1] = pt;
+							maze[pt->GetY()][pt->GetX() + 1] = GRAY_FROM_END;
+							pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
+							grayFromEnd.push_back(pt1);
+						}
+						// go left
+						if (bfs_started_start_end && maze[pt->GetY()][pt->GetX() - 1] == START)
+						{
+							bfs_started_start_end = false;
+
+						}
+						if (bfs_started_start_end &&maze[pt->GetY()][pt->GetX() - 1] == GRAY)
+						{
+							bfs_started_start_end = false;
+							pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
+							pt = ChangeDirection(pt1, pt->GetY(), pt->GetX());
+						}
+						if (bfs_started_start_end && maze[pt->GetY()][pt->GetX() - 1] == SPACE)
+						{ // add it to gray
+							maze[pt->GetY()][pt->GetX() - 1] = GRAY_FROM_END;
+							parent[pt->GetY()][pt->GetX() - 1] = pt;
+							pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
+							grayFromEnd.push_back(pt1);
+						}
+						if (!bfs_started_start_end) // target was found
+							ShowPath(pt);
+					}
+				}
+			}
+		}
+	}
 }
 
 void DfsIteration()
@@ -274,14 +422,14 @@ void DfsIteration()
 	Point2D* pt;
 	Point2D* pt1;
 
-	if (gray.empty())
+	if (grayFromStart.empty())
 	{
 		dfs_started = false;// there is no path to the target
 	}
 	else // gray is not empty
 	{
-		pt = gray[gray.size() - 1]; // this will be the parent
-		gray.pop_back(); // pop
+		pt = grayFromStart[grayFromStart.size() - 1]; // this will be the parent
+		grayFromStart.pop_back(); // pop
 
 						 // paint pt VISITED
 		if (maze[pt->GetY()][pt->GetX()] == TARGET) // we have found the target
@@ -304,7 +452,7 @@ void DfsIteration()
 				maze[pt->GetY() + 1][pt->GetX()] = GRAY;
 				parent[pt->GetY() + 1][pt->GetX()] = pt;
 				pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go down
 			if (maze[pt->GetY() - 1][pt->GetX()] == TARGET)
@@ -317,7 +465,7 @@ void DfsIteration()
 				maze[pt->GetY() - 1][pt->GetX()] = GRAY;
 				parent[pt->GetY() - 1][pt->GetX()] = pt;
 				pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go right
 			if (maze[pt->GetY()][pt->GetX() + 1] == TARGET)
@@ -330,7 +478,7 @@ void DfsIteration()
 				parent[pt->GetY()][pt->GetX() + 1] = pt;
 				maze[pt->GetY()][pt->GetX() + 1] = GRAY;
 				pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go left
 			if (dfs_started && maze[pt->GetY()][pt->GetX() - 1] == TARGET)
@@ -343,7 +491,7 @@ void DfsIteration()
 				maze[pt->GetY()][pt->GetX() - 1] = GRAY;
 				parent[pt->GetY()][pt->GetX() - 1] = pt;
 				pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			if (!dfs_started) // target was found
 				ShowPath(pt);
@@ -376,10 +524,16 @@ void DrawMaze()
 				glColor3d(1, 0, 0); // RED;
 				break;
 			case GRAY:
-				glColor3d(1, .8, 0); // ORANGE;
+				glColor3d(1, .8, 0); // GRAY;
+				break;
+			case GRAY_FROM_END:
+				glColor3d(1, .8, 0); // GRAY;
 				break;
 			case PATH:
-				glColor3d(0.8, .5, 1); // ORANGE;
+				glColor3d(0.90, 0.91, 0.98); // SILVER;
+				break;
+			case VISITED_FROM_END_TO_START:
+				glColor3d(1, 0.43, 0.78);  // NeonPink ;
 				break;
 
 			}
@@ -406,10 +560,8 @@ void idle()
 {
 	if (bfs_started)
 		BfsIteration();
-	if (bfs_started_start_end) {
-		gray.push_back(endPoint);
+	if (bfs_started_start_end)
 		BfsIterationStartEnd();
-	}
 	if (dfs_started)
 		DfsIteration();
 	glutPostRedisplay();// calls indirectly to display

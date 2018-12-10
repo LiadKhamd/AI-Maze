@@ -32,7 +32,7 @@ Point2D* parent[MSIZE][MSIZE];
 bool bfs_started = false, dfs_started=false;
 
 // gray queue
-vector <Point2D*> gray;
+vector <Point2D*> grayFromStart;
 
 priority_queue <BestNode, vector <BestNode>, CompareNodes> bestQ;
 
@@ -93,7 +93,7 @@ void init()
 	maze[rand() % MSIZE][rand() % MSIZE] = TARGET;
 	pt = new Point2D(MSIZE / 2, MSIZE / 2);
 	// save the start in gray
-	gray.push_back(pt);
+	grayFromStart.push_back(pt);
 
 	// save start point in priority queue
 	bn = new BestNode(*pt, ground[MSIZE / 2][MSIZE / 2]);
@@ -143,14 +143,14 @@ void BfsIteration()
 	Point2D* pt;
 	Point2D* pt1;
 
-	if (gray.empty())
+	if (grayFromStart.empty())
 	{
 		bfs_started = false;// there is no path to the target
 	}
 	else // gray is not empty
 	{
-		pt = gray[0]; // this will be the parent
-		gray.erase(gray.begin()); // dequeue
+		pt = grayFromStart[0]; // this will be the parent
+		grayFromStart.erase(grayFromStart.begin()); // dequeue
 
 		// paint pt VISITED
 		if (maze[pt->GetY()][pt->GetX()] == TARGET) // we have found the target
@@ -173,7 +173,7 @@ void BfsIteration()
 				maze[pt->GetY() + 1][pt->GetX()] = GRAY;
 				parent[pt->GetY() + 1][pt->GetX()] = pt;
 				pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go down
 			if (maze[pt->GetY() - 1][pt->GetX()] == TARGET)
@@ -186,7 +186,7 @@ void BfsIteration()
 				maze[pt->GetY() - 1][pt->GetX()] = GRAY;
 				parent[pt->GetY() - 1][pt->GetX()] = pt;
 				pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go right
 			if (maze[pt->GetY()][pt->GetX() + 1] == TARGET)
@@ -199,7 +199,7 @@ void BfsIteration()
 				parent[pt->GetY() ][pt->GetX()+ 1] = pt;
 				maze[pt->GetY()][pt->GetX() + 1] = GRAY;
 				pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go left
 			if (bfs_started && maze[pt->GetY()][pt->GetX() - 1] == TARGET)
@@ -212,7 +212,7 @@ void BfsIteration()
 				maze[pt->GetY()][pt->GetX() - 1] = GRAY;
 				parent[pt->GetY()][pt->GetX() - 1] = pt;
 				pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			if (!bfs_started) // target was found
 				ShowPath(pt);
@@ -324,14 +324,14 @@ void DfsIteration()
 	Point2D* pt;
 	Point2D* pt1;
 
-	if (gray.empty())
+	if (grayFromStart.empty())
 	{
 		dfs_started = false;// there is no path to the target
 	}
 	else // gray is not empty
 	{
-		pt = gray[gray.size()-1]; // this will be the parent
-		gray.pop_back(); // pop
+		pt = grayFromStart[grayFromStart.size()-1]; // this will be the parent
+		grayFromStart.pop_back(); // pop
 
 								  // paint pt VISITED
 		if (maze[pt->GetY()][pt->GetX()] == TARGET) // we have found the target
@@ -354,7 +354,7 @@ void DfsIteration()
 				maze[pt->GetY() + 1][pt->GetX()] = GRAY;
 				parent[pt->GetY() + 1][pt->GetX()] = pt;
 				pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go down
 			if (maze[pt->GetY() - 1][pt->GetX()] == TARGET)
@@ -367,7 +367,7 @@ void DfsIteration()
 				maze[pt->GetY() - 1][pt->GetX()] = GRAY;
 				parent[pt->GetY() - 1][pt->GetX()] = pt;
 				pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go right
 			if (maze[pt->GetY()][pt->GetX() + 1] == TARGET)
@@ -380,7 +380,7 @@ void DfsIteration()
 				parent[pt->GetY()][pt->GetX() + 1] = pt;
 				maze[pt->GetY()][pt->GetX() + 1] = GRAY;
 				pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			// go left
 			if (dfs_started && maze[pt->GetY()][pt->GetX() - 1] == TARGET)
@@ -393,7 +393,7 @@ void DfsIteration()
 				maze[pt->GetY()][pt->GetX() - 1] = GRAY;
 				parent[pt->GetY()][pt->GetX() - 1] = pt;
 				pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
-				gray.push_back(pt1);
+				grayFromStart.push_back(pt1);
 			}
 			if (!dfs_started) // target was found
 				ShowPath(pt);
