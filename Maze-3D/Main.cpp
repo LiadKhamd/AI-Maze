@@ -1,10 +1,12 @@
 #define _CRT_SECURE_NO_WARNINGS
-
 #include "GLUT.h"
 #include <math.h>
 #include <time.h>
 #include <vector>
+#include <queue>
 #include "Point2D.h"
+#include "BestNode.h"
+#include "CompareNodes.h"
 
 using namespace std;
 
@@ -27,11 +29,12 @@ double ground[MSIZE][MSIZE];
 
 Point2D* parent[MSIZE][MSIZE];
 
-bool bfs_started = false, dfs_started = false;
+bool bfs_started = false, dfs_started=false;
 
 // gray queue
 vector <Point2D*> gray;
 
+priority_queue <BestNode, vector <BestNode>, CompareNodes> bestQ;
 
 double eyex = 0, eyey = 250, eyez = 30;
 double angle = 0;
@@ -57,7 +60,7 @@ void LoadBitmap(char * filename)
 	fread(bmp, 1, sz, pf);
 	// fill ground with heights
 
-	for (i = 0; i<MSIZE; i++)
+	for(i=0;i<MSIZE;i++)
 		for (j = 0; j < MSIZE; j++)
 		{
 			ground[i][j] = (bmp[(i*MSIZE + j) * 3 + 0] / 256.0) * MAX_HEIGHT;
@@ -73,6 +76,7 @@ void init()
 {
 	int i, j;
 	Point2D* pt;
+	BestNode* bn;
 
 	srand(time(0));
 
@@ -91,11 +95,14 @@ void init()
 	// save the start in gray
 	gray.push_back(pt);
 
+	// save start point in priority queue
+	bn = new BestNode(*pt, ground[MSIZE / 2][MSIZE / 2]);
+	bestQ.push(*bn);
 
-	glClearColor(GLclampf(0.0), GLclampf(0.0), GLclampf(0.3), 0);
+	glClearColor(0.0, 0.0, 0.3, 0);
 
 	glEnable(GL_DEPTH_TEST);
-	//	glOrtho(-1, 1, -1, 1, -1, 1);
+//	glOrtho(-1, 1, -1, 1, -1, 1);
 }
 
 void SetupMaze()
@@ -108,7 +115,7 @@ void SetupMaze()
 		maze[0][i] = maze[MSIZE - 1][i] = WALL;
 	}
 	// set walls
-	for (i = 1; i < MSIZE - 1; i++)
+	for (i = 1; i < MSIZE-1; i++)
 		for (j = 1; j < MSIZE - 1; j++)
 		{
 			if (i % 2 == 0) // mostly walls
@@ -145,7 +152,7 @@ void BfsIteration()
 		pt = gray[0]; // this will be the parent
 		gray.erase(gray.begin()); // dequeue
 
-								  // paint pt VISITED
+		// paint pt VISITED
 		if (maze[pt->GetY()][pt->GetX()] == TARGET) // we have found the target
 		{
 			bfs_started = false;
@@ -154,8 +161,8 @@ void BfsIteration()
 		{
 			if (maze[pt->GetY()][pt->GetX()] != START)
 				maze[pt->GetY()][pt->GetX()] = VISITED; // y is i, x is j!!! 
-														// check non-visited neighbors
-														// go up
+			// check non-visited neighbors
+			// go up
 			if (maze[pt->GetY() + 1][pt->GetX()] == TARGET)
 			{
 				bfs_started = false;
@@ -189,7 +196,7 @@ void BfsIteration()
 			}
 			if (bfs_started && maze[pt->GetY()][pt->GetX() + 1] == SPACE)
 			{ // add it to gray
-				parent[pt->GetY()][pt->GetX() + 1] = pt;
+				parent[pt->GetY() ][pt->GetX()+ 1] = pt;
 				maze[pt->GetY()][pt->GetX() + 1] = GRAY;
 				pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
 				gray.push_back(pt1);
@@ -213,6 +220,105 @@ void BfsIteration()
 	}
 }
 
+void BfsPriorityIteration()
+{
+	Point2D* pt;
+	Point2D* pt1;
+	BestNode bn;
+
+	if (bestQ.empty())
+	{
+		bfs_started = false;// there is no path to the target
+	}
+	else // gray is not empty
+	{
+//		pt = gray[0]; // this will be the parent
+//		gray.erase(gray.begin()); // dequeue
+		bn = bestQ.top();
+		bestQ.pop();
+		pt = new Point2D(bn.GetPoint());
+
+								  // paint pt VISITED
+		if (maze[pt->GetY()][pt->GetX()] == TARGET) // we have found the target
+		{
+			bfs_started = false;
+		}
+		else
+		{
+			if (maze[pt->GetY()][pt->GetX()] != START)
+				maze[pt->GetY()][pt->GetX()] = VISITED; // y is i, x is j!!! 
+				// check non-visited neighbors
+				// go up
+			if (maze[pt->GetY() + 1][pt->GetX()] == TARGET)
+			{
+				bfs_started = false;
+			}
+			if (bfs_started && maze[pt->GetY() + 1][pt->GetX()] == SPACE)
+			{ // add it to bestQ
+				maze[pt->GetY() + 1][pt->GetX()] = GRAY;
+				parent[pt->GetY() + 1][pt->GetX()] = pt;
+
+				pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
+				
+				BestNode* pbn = new BestNode(*pt1, ground[pt->GetY() + 1][pt->GetX()]);
+				bestQ.push(*pbn);
+//				
+//				gray.push_back(pt1);
+			}
+			// go down
+			if (maze[pt->GetY() - 1][pt->GetX()] == TARGET)
+			{
+				bfs_started = false;
+
+			}
+			if (bfs_started && maze[pt->GetY() - 1][pt->GetX()] == SPACE)
+			{ // add it to gray
+				maze[pt->GetY() - 1][pt->GetX()] = GRAY;
+				parent[pt->GetY() - 1][pt->GetX()] = pt;
+				pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
+				BestNode* pbn = new BestNode(*pt1, ground[pt->GetY() - 1][pt->GetX()]);
+				bestQ.push(*pbn);
+
+			//				gray.push_back(pt1);
+			}
+			// go right
+			if (maze[pt->GetY()][pt->GetX() + 1] == TARGET)
+			{
+				bfs_started = false;
+
+			}
+			if (bfs_started && maze[pt->GetY()][pt->GetX() + 1] == SPACE)
+			{ // add it to gray
+				parent[pt->GetY()][pt->GetX() + 1] = pt;
+				maze[pt->GetY()][pt->GetX() + 1] = GRAY;
+				pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
+				BestNode* pbn = new BestNode(*pt1, ground[pt->GetY()][pt->GetX() + 1]);
+				bestQ.push(*pbn);
+
+  //				gray.push_back(pt1);
+			}
+			// go left
+			if (bfs_started && maze[pt->GetY()][pt->GetX() - 1] == TARGET)
+			{
+				bfs_started = false;
+
+			}
+			if (bfs_started && maze[pt->GetY()][pt->GetX() - 1] == SPACE)
+			{ // add it to gray
+				maze[pt->GetY()][pt->GetX() - 1] = GRAY;
+				parent[pt->GetY()][pt->GetX() - 1] = pt;
+				pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
+				BestNode* pbn = new BestNode(*pt1, ground[pt->GetY()][pt->GetX() - 1]);
+				bestQ.push(*pbn);
+				//				gray.push_back(pt1);
+			}
+			if (!bfs_started) // target was found
+				ShowPath(pt);
+		}
+	}
+}
+
+
 void DfsIteration()
 {
 	Point2D* pt;
@@ -224,10 +330,10 @@ void DfsIteration()
 	}
 	else // gray is not empty
 	{
-		pt = gray[gray.size() - 1]; // this will be the parent
+		pt = gray[gray.size()-1]; // this will be the parent
 		gray.pop_back(); // pop
 
-						 // paint pt VISITED
+								  // paint pt VISITED
 		if (maze[pt->GetY()][pt->GetX()] == TARGET) // we have found the target
 		{
 			dfs_started = false;
@@ -299,7 +405,7 @@ void DrawMaze()
 {
 	int i, j;
 
-	for (i = 0; i<MSIZE; i++)
+	for(i = 0;i<MSIZE;i++)
 		for (j = 0; j < MSIZE; j++)
 		{
 			switch (maze[i][j])
@@ -317,7 +423,7 @@ void DrawMaze()
 				glColor3d(0, 0, 1); // blue;
 				break;
 			case TARGET:
-				glColor3d(1, 0, 0); // RED;
+				glColor3d(1,0,0 ); // RED;
 				break;
 			case GRAY:
 				glColor3d(1, .8, 0); // ORANGE;
@@ -329,10 +435,10 @@ void DrawMaze()
 			}
 			// draw square
 			glBegin(GL_POLYGON);
-			glVertex2d(j*SQSIZE - 1 - SQSIZE / 2, i*SQSIZE - 1 + SQSIZE / 2);
-			glVertex2d(j*SQSIZE - 1 + SQSIZE / 2, i*SQSIZE - 1 + SQSIZE / 2);
-			glVertex2d(j*SQSIZE - 1 + SQSIZE / 2, i*SQSIZE - 1 - SQSIZE / 2);
-			glVertex2d(j*SQSIZE - 1 - SQSIZE / 2, i*SQSIZE - 1 - SQSIZE / 2);
+				glVertex2d(j*SQSIZE - 1- SQSIZE/2, i*SQSIZE - 1+SQSIZE/2);
+				glVertex2d(j*SQSIZE - 1 + SQSIZE / 2, i*SQSIZE - 1 + SQSIZE / 2);
+				glVertex2d(j*SQSIZE - 1 + SQSIZE / 2, i*SQSIZE - 1 - SQSIZE / 2);
+				glVertex2d(j*SQSIZE - 1 - SQSIZE / 2, i*SQSIZE - 1 - SQSIZE / 2);
 			glEnd();
 		}
 
@@ -340,7 +446,7 @@ void DrawMaze()
 
 void SetColor(int i, int j)
 {
-	double h = 0.4 + 0.6*ground[i][j] / MAX_HEIGHT;
+	double h = 0.4+0.6*ground[i][j]/MAX_HEIGHT;
 	switch (maze[i][j])
 	{
 	case WALL:
@@ -373,28 +479,38 @@ void Draw3DMaze()
 {
 	int i, j;
 
-	for (i = 0; i<MSIZE - 1; i++)
-		for (j = 0; j < MSIZE - 1; j++)
+	for (i = 0; i<MSIZE-1; i++)
+		for (j = 0; j < MSIZE-1; j++)
 		{
 			// draw square
 			glBegin(GL_POLYGON);
 			SetColor(i, j);
-			glVertex3d(j - MSIZE / 2, ground[i][j], i - MSIZE / 2);
-			SetColor(i, j + 1);
-			glVertex3d(j + 1 - MSIZE / 2, ground[i][j + 1], i - MSIZE / 2);
-			SetColor(i + 1, j + 1);
-			glVertex3d(j + 1 - MSIZE / 2, ground[i + 1][j + 1], i + 1 - MSIZE / 2);
-			SetColor(i + 1, j);
-			glVertex3d(j - MSIZE / 2, ground[i + 1][j], i + 1 - MSIZE / 2);
+			glVertex3d(j-MSIZE/2,ground[i][j], i - MSIZE / 2);
+			SetColor(i, j+1);
+			glVertex3d(j+1 - MSIZE / 2, ground[i][j+1], i - MSIZE / 2);
+			SetColor(i+1, j+1);
+			glVertex3d(j+1 - MSIZE / 2, ground[i+1][j+1], i+1 - MSIZE / 2);
+			SetColor(i+1, j);
+			glVertex3d(j - MSIZE / 2, ground[i+1][j], i+1 - MSIZE / 2);
 			glEnd();
+
+			if (maze[i][j] == TARGET)
+			{
+				glColor3d(1, 0, 0);
+				glPushMatrix();
+				glTranslated(j-MSIZE/2, 60, i - MSIZE / 2);
+				glutSolidSphere(4, 30, 30);
+				glPopMatrix();
+			}
 		}
+
 
 }
 
 
 void display()
 {
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -405,7 +521,7 @@ void display()
 	glLoadIdentity();
 
 	glRotated(angle, 0, 1, 0);
-	//	DrawMaze();
+//	DrawMaze();
 	Draw3DMaze();
 
 	glutSwapBuffers();// show what was drawn in "frame buffer"
@@ -416,7 +532,10 @@ void idle()
 	angle += 0.1;
 
 	if (bfs_started)
-		BfsIteration();
+	{
+		//		BfsIteration();
+		BfsPriorityIteration();
+	}
 	if (dfs_started)
 		DfsIteration();
 	glutPostRedisplay();// calls indirectly to display
@@ -441,7 +560,7 @@ void main(int argc, char* argv[])
 	glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(W, H);
 	glutInitWindowPosition(200, 100);
-	glutCreateWindow("Maze 3D");
+	glutCreateWindow("Maze - 3D");
 
 	glutDisplayFunc(display); // refresh function
 	glutIdleFunc(idle); // idle: when nothing happens
