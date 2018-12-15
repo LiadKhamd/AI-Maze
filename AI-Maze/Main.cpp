@@ -26,7 +26,7 @@ int maze[MSIZE][MSIZE];
 Point2D* parent[MSIZE][MSIZE];
 Point2D* startPoint, *endPoint;
 
-bool bfs_started = false, dfs_started = false, bfs_started_start_end = false;
+bool bfs_started = false, dfs_started = false, bfs_started_start_end = false, a_star = false;
 
 // gray queue
 vector <Point2D*> grayFromStart;
@@ -89,9 +89,8 @@ void SetupMaze()
 
 void Clean()
 {
-	bfs_started = false;
-	bfs_started_start_end = false;
-	dfs_started = false;
+	bfs_started = bfs_started_start_end = dfs_started = a_star = false;
+
 	for (int i = 0; i < MSIZE; i++)
 	{
 		for (int j = 0; j < MSIZE; j++)
@@ -104,8 +103,6 @@ void Clean()
 		grayFromStart.erase(grayFromStart.begin());
 	while (!grayFromEnd.empty())
 		grayFromEnd.erase(grayFromEnd.begin());
-	grayFromStart.push_back(startPoint);
-	grayFromEnd.push_back(endPoint);
 }
 
 void ShowPath(Point2D* pt)
@@ -499,6 +496,11 @@ void DfsIteration()
 	}
 }
 
+void AstarIteration()
+{
+
+}
+
 void DrawMaze()
 {
 	int i, j;
@@ -530,7 +532,7 @@ void DrawMaze()
 				glColor3d(1, .8, 0); // GRAY;
 				break;
 			case PATH:
-				glColor3d(0.90, 0.91, 0.98); // SILVER;
+				glColor3d(1.0, 0.25, 0.0); // ORANGE;
 				break;
 			case VISITED_FROM_END_TO_START:
 				glColor3d(1, 0.43, 0.78);  // NeonPink ;
@@ -564,6 +566,8 @@ void idle()
 		BfsIterationStartEnd();
 	if (dfs_started)
 		DfsIteration();
+	if (a_star)
+		AstarIteration();
 	glutPostRedisplay();// calls indirectly to display
 }
 
@@ -572,19 +576,27 @@ void Menu(int choice)
 	switch (choice)
 	{
 	case 1:
-		bfs_started = true;
+		Clean();
+		init();
 		break;
 	case 2:
-		bfs_started_start_end = true;
+		bfs_started = true;
 		break;
 	case 3:
-		dfs_started = true;
+		bfs_started_start_end = true;
+		break;
+	case 4:
+		a_star = true;
 		break;
 	case 5:
+		dfs_started = true;
+		break;
+	case 6:
 		Clean();
+		grayFromStart.push_back(startPoint);
+		grayFromEnd.push_back(endPoint);
 		break;
 	}
-
 }
 
 void main(int argc, char* argv[])
@@ -600,13 +612,13 @@ void main(int argc, char* argv[])
 	init();
 
 	glutCreateMenu(Menu);
-	glutAddMenuEntry("BFS", 1);
-	glutAddMenuEntry("BFS Start-End", 2);
-	glutAddMenuEntry("DFS", 3);
-	glutAddMenuEntry("A*", 4);
-	glutAddMenuEntry("Clean", 5);
+	glutAddMenuEntry("New maze", 1);
+	glutAddMenuEntry("BFS", 2);
+	glutAddMenuEntry("BFS Start-End", 3);
+	glutAddMenuEntry("DFS", 4);
+	glutAddMenuEntry("A*", 5);
+	glutAddMenuEntry("Clean", 6);
 	glutAttachMenu(GLUT_RIGHT_BUTTON);
-
 
 	glutMainLoop();
 }
