@@ -2,8 +2,6 @@
 d:\projects\visual studio\ai-maze\maze-3d\main.cpp(102): warning C4305: 'argument': truncation from 'double' to 'GLclampf'
   Generating Code...
   Skipping... (no relevant changes detected)
-  Point2D.cpp
   CompareNodes.cpp
-  BestNode.cpp
   Maze-3D.vcxproj -> D:\Projects\Visual studio\AI-Maze\Debug\Maze-3D.exe
   Maze-3D.vcxproj -> D:\Projects\Visual studio\AI-Maze\Debug\Maze-3D.pdb (Full PDB)

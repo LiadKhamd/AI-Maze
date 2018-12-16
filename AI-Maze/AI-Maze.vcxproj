@@ -147,11 +147,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ComparePoints.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Point2D.cpp" />
+    <ClCompile Include="Point2D_hg.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ComparePoints.h" />
     <ClInclude Include="Point2D.h" />
+    <ClInclude Include="Point2D_hg.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -2,7 +2,11 @@
 #include <math.h>
 #include <time.h>
 #include <vector>
+#include <queue>
+#include <iostream>
 #include "Point2D.h"
+#include "Point2D_hg.h"
+#include "ComparePoints.h"
 
 using namespace std;
 
@@ -25,43 +29,16 @@ const double SQSIZE = 2.0 / MSIZE;
 int maze[MSIZE][MSIZE];
 Point2D* parent[MSIZE][MSIZE];
 Point2D* startPoint, *endPoint;
+Point2D_hg* startAstar;
 
 bool bfs_started = false, dfs_started = false, bfs_started_start_end = false, a_star = false;
+
+clock_t startTime, endTime;
 
 // gray queue
 vector <Point2D*> grayFromStart;
 vector <Point2D*> grayFromEnd;
-
-void SetupMaze();
-
-void init()
-{
-	int i, j;
-
-	srand(time(0));
-
-	// clean up the maze
-	for (i = 0; i < MSIZE; i++)
-		for (j = 0; j < MSIZE; j++)
-			maze[i][j] = SPACE;
-
-	SetupMaze();
-
-	startPoint = new Point2D(MSIZE / 2, MSIZE / 2);
-	maze[startPoint->GetY()][startPoint->GetX()] = START;
-
-	//endPoint
-	endPoint = new Point2D(rand() % MSIZE, rand() % MSIZE);
-	maze[endPoint->GetY()][endPoint->GetX()] = TARGET;
-
-	// save the start in gray
-	grayFromStart.push_back(startPoint);
-	grayFromEnd.push_back(endPoint);
-
-	glClearColor(GLclampf(0.7), GLclampf(0.7), GLclampf(0.7), 0);
-
-	glOrtho(-1, 1, -1, 1, -1, 1);
-}
+priority_queue <Point2D_hg, vector <Point2D_hg>, ComparePoints> pq;
 
 void SetupMaze()
 {
@@ -87,6 +64,37 @@ void SetupMaze()
 		}
 }
 
+void init()
+{
+	int i, j;
+
+	srand(time(0));
+
+	// clean up the maze
+	for (i = 0; i < MSIZE; i++)
+		for (j = 0; j < MSIZE; j++)
+			maze[i][j] = SPACE;
+
+	SetupMaze();
+
+	startPoint = new Point2D(MSIZE / 2, MSIZE / 2);
+	maze[startPoint->GetY()][startPoint->GetX()] = START;
+
+	//endPoint
+	endPoint = new Point2D(rand() % MSIZE, rand() % MSIZE);
+	maze[endPoint->GetY()][endPoint->GetX()] = TARGET;
+
+	startAstar = new Point2D_hg(*startPoint, *endPoint);
+	pq.push(*startAstar);
+	// save the start in gray
+	grayFromStart.push_back(startPoint);
+	grayFromEnd.push_back(endPoint);
+
+	glClearColor(GLclampf(0.7), GLclampf(0.7), GLclampf(0.7), 0);
+
+	glOrtho(-1, 1, -1, 1, -1, 1);
+}
+
 void Clean()
 {
 	bfs_started = bfs_started_start_end = dfs_started = a_star = false;
@@ -103,20 +111,23 @@ void Clean()
 		grayFromStart.erase(grayFromStart.begin());
 	while (!grayFromEnd.empty())
 		grayFromEnd.erase(grayFromEnd.begin());
+	while (!pq.empty())
+		pq.pop();
 }
 
 void ShowPath(Point2D* pt)
 {
-	while (maze[pt->GetY()][pt->GetX()] != START)
-	{
-		maze[pt->GetY()][pt->GetX()] = PATH;
-		pt = parent[pt->GetY()][pt->GetX()];
-	}
+	if (pt != NULL)
+		while (maze[pt->GetY()][pt->GetX()] != START)
+		{
+			maze[pt->GetY()][pt->GetX()] = PATH;
+			pt = parent[pt->GetY()][pt->GetX()];
+		}
 }
 
 void BfsIteration()
 {
-	Point2D* pt;
+	Point2D* pt = NULL;
 	Point2D* pt1;
 
 	if (grayFromStart.empty())
@@ -190,30 +201,37 @@ void BfsIteration()
 				pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
 				grayFromStart.push_back(pt1);
 			}
-			if (!bfs_started) // target was found
-				ShowPath(pt);
 		}
+	}
+	if (!bfs_started) { // target was found
+		endTime = clock();
+		cout << "BFS - Time: " << ((double)(endTime - startTime) / CLOCKS_PER_SEC) << " sec" << endl;
+		ShowPath(pt);
 	}
 }
 
 Point2D* ChangeDirection(Point2D* pt, int y, int x)
 {
-	Point2D* temp = new Point2D(x, y), *temp2;
-	do
+	if (pt != NULL)
 	{
-		temp2 = temp;
-		temp = parent[temp->GetY()][temp->GetX()];
-		parent[y][x] = pt;
-		pt = temp2;
-		x = temp->GetX();
-		y = temp->GetY();
-	} while (maze[temp->GetY()][temp->GetX()] != TARGET);
-	return temp2;
+		Point2D* temp = new Point2D(x, y), *temp2;
+		do
+		{
+			temp2 = temp;
+			temp = parent[temp->GetY()][temp->GetX()];
+			parent[y][x] = pt;
+			pt = temp2;
+			x = temp->GetX();
+			y = temp->GetY();
+		} while (maze[temp->GetY()][temp->GetX()] != TARGET);
+		return temp2;
+	}
+	return NULL;
 }
 
 void BfsIterationStartEnd()
 {
-	Point2D* pt;
+	Point2D* pt = NULL;
 	Point2D* pt1;
 
 	if (grayFromStart.empty() || grayFromEnd.empty())
@@ -225,7 +243,7 @@ void BfsIterationStartEnd()
 		pt = grayFromStart[0]; // this will be the parent
 		grayFromStart.erase(grayFromStart.begin()); // dequeue
 
-								  // paint pt VISITED
+													// paint pt VISITED
 		if (maze[pt->GetY()][pt->GetX()] == TARGET || maze[pt->GetY()][pt->GetX()] == VISITED_FROM_END_TO_START) // we have found the target
 		{
 			bfs_started_start_end = false;
@@ -307,11 +325,9 @@ void BfsIterationStartEnd()
 				pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
 				grayFromStart.push_back(pt1);
 			}
-			if (!bfs_started_start_end) // target was found
-				ShowPath(pt);
-			else
+			if (bfs_started_start_end)
 			{
-				if (bfs_started_start_end && (grayFromStart.empty() || grayFromEnd.empty()))
+				if (grayFromStart.empty() || grayFromEnd.empty())
 				{
 					bfs_started_start_end = false;// there is no path to the target
 				}
@@ -328,8 +344,8 @@ void BfsIterationStartEnd()
 					{
 						if (bfs_started_start_end && maze[pt->GetY()][pt->GetX()] != TARGET)
 							maze[pt->GetY()][pt->GetX()] = VISITED_FROM_END_TO_START; // y is i, x is j!!! 
-																	// check non-visited neighbors
-																	// go up
+																					  // check non-visited neighbors
+																					  // go up
 						if (bfs_started_start_end && maze[pt->GetY() + 1][pt->GetX()] == START)
 						{
 							bfs_started_start_end = false;
@@ -405,18 +421,21 @@ void BfsIterationStartEnd()
 							pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
 							grayFromEnd.push_back(pt1);
 						}
-						if (!bfs_started_start_end) // target was found
-							ShowPath(pt);
 					}
 				}
 			}
 		}
 	}
+	if (!bfs_started_start_end) { // target was found
+		endTime = clock();
+		cout << "BFS 2W - Time: " << ((double)(endTime - startTime) / CLOCKS_PER_SEC) << " sec" << endl;
+		ShowPath(pt);
+	}
 }
 
 void DfsIteration()
 {
-	Point2D* pt;
+	Point2D* pt = NULL;
 	Point2D* pt1;
 
 	if (grayFromStart.empty())
@@ -490,15 +509,105 @@ void DfsIteration()
 				pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
 				grayFromStart.push_back(pt1);
 			}
-			if (!dfs_started) // target was found
-				ShowPath(pt);
 		}
+	}
+	if (!dfs_started) { // target was found
+		endTime = clock();
+		cout << "DFS - Time: " << ((double)(endTime - startTime) / CLOCKS_PER_SEC) << " sec" << endl;
+		ShowPath(pt);
 	}
 }
 
 void AstarIteration()
 {
+	Point2D* pt = NULL;
+	Point2D* pt1;
+	Point2D_hg bestPoint;
 
+	if (pq.empty())
+	{
+		a_star = false;// there is no path to the target
+	}
+	else // gray is not empty
+	{
+		bestPoint = pq.top();
+		pq.pop();
+		pt = new Point2D(bestPoint.getPoint());
+
+		// paint pt VISITED
+		if (maze[pt->GetY()][pt->GetX()] == TARGET) // we have found the target
+		{
+			a_star = false;
+		}
+		else
+		{
+			if (maze[pt->GetY()][pt->GetX()] != START)
+				maze[pt->GetY()][pt->GetX()] = VISITED; // y is i, x is j!!! 
+														// check non-visited neighbors
+														// go up
+			if (maze[pt->GetY() + 1][pt->GetX()] == TARGET)
+			{
+				a_star = false;
+			}
+			if (a_star && maze[pt->GetY() + 1][pt->GetX()] == SPACE)
+			{ // add it to pq
+				maze[pt->GetY() + 1][pt->GetX()] = GRAY;
+				parent[pt->GetY() + 1][pt->GetX()] = pt;
+
+				pt1 = new Point2D(pt->GetX(), pt->GetY() + 1);// y is i, x is j!!! 
+
+				Point2D_hg *pbn = new Point2D_hg(bestPoint, *pt1, *endPoint);
+				pq.emplace(*pbn);
+			}
+			// go down
+			if (a_star && maze[pt->GetY() - 1][pt->GetX()] == TARGET)
+			{
+				a_star = false;
+			}
+			if (a_star &&  maze[pt->GetY() - 1][pt->GetX()] == SPACE)
+			{ // add it to gray
+				maze[pt->GetY() - 1][pt->GetX()] = GRAY;
+				parent[pt->GetY() - 1][pt->GetX()] = pt;
+				pt1 = new Point2D(pt->GetX(), pt->GetY() - 1);// y is i, x is j!!! 
+
+				Point2D_hg *pbn = new Point2D_hg(bestPoint, *pt1, *endPoint);
+				pq.emplace(*pbn);
+			}
+			// go right
+			if (a_star && maze[pt->GetY()][pt->GetX() + 1] == TARGET)
+			{
+				a_star = false;
+
+			}
+			if (a_star &&  maze[pt->GetY()][pt->GetX() + 1] == SPACE)
+			{ // add it to gray
+				parent[pt->GetY()][pt->GetX() + 1] = pt;
+				maze[pt->GetY()][pt->GetX() + 1] = GRAY;
+				pt1 = new Point2D(pt->GetX() + 1, pt->GetY());// y is i, x is j!!! 
+				Point2D_hg *pbn = new Point2D_hg(bestPoint, *pt1, *endPoint);
+				pq.emplace(*pbn);
+			}
+			// go left
+			if (a_star &&  maze[pt->GetY()][pt->GetX() - 1] == TARGET)
+			{
+				a_star = false;
+
+			}
+			if (a_star && maze[pt->GetY()][pt->GetX() - 1] == SPACE)
+			{ // add it to gray
+				maze[pt->GetY()][pt->GetX() - 1] = GRAY;
+				parent[pt->GetY()][pt->GetX() - 1] = pt;
+				pt1 = new Point2D(pt->GetX() - 1, pt->GetY());// y is i, x is j!!! 
+				Point2D_hg *pbn = new Point2D_hg(bestPoint, *pt1, *endPoint);
+				pq.emplace(*pbn);
+			}
+		}
+	}
+	if (!a_star) { // target was found
+		endTime = clock();
+		cout << "A* Time: " << ((double)(endTime - startTime) / CLOCKS_PER_SEC) << " sec" << endl;
+		ShowPath(pt);
+	}
 }
 
 void DrawMaze()
@@ -532,7 +641,7 @@ void DrawMaze()
 				glColor3d(1, .8, 0); // GRAY;
 				break;
 			case PATH:
-				glColor3d(1.0, 0.25, 0.0); // ORANGE;
+				glColor3d(1.0, 1.0, 0.0); // YELLOW;
 				break;
 			case VISITED_FROM_END_TO_START:
 				glColor3d(1, 0.43, 0.78);  // NeonPink ;
@@ -573,28 +682,32 @@ void idle()
 
 void Menu(int choice)
 {
+	Clean();
 	switch (choice)
 	{
 	case 1:
-		Clean();
 		init();
 		break;
 	case 2:
 		bfs_started = true;
-		break;
+		startTime = clock();
+		goto DEFULAT;
 	case 3:
 		bfs_started_start_end = true;
-		break;
+		startTime = clock();
+		goto DEFULAT;
 	case 4:
-		a_star = true;
-		break;
-	case 5:
 		dfs_started = true;
-		break;
-	case 6:
-		Clean();
+		startTime = clock();
+		goto DEFULAT;
+	case 5:
+		a_star = true;
+		startTime = clock();
+		goto DEFULAT;
+	DEFULAT:	default:
 		grayFromStart.push_back(startPoint);
 		grayFromEnd.push_back(endPoint);
+		pq.push(*startAstar);
 		break;
 	}
 }
