@@ -10,21 +10,21 @@ Examine algorithms for finding a path to the target at the best possible time
 Start point is the blue point and Target point is the red point.
 
 ### The maze create randomly each time:
-![maze](https://user-images.githubusercontent.com/43498633/49782067-a6da3f80-fd1d-11e8-922d-10062e8cccd4.png)
+![maze](https://user-images.githubusercontent.com/43498633/50052609-425d1d00-012f-11e9-9006-8d9364d6bb20.png)
 
 ### You can test the maze with this menu (right click on the mouse):
-![menu](https://user-images.githubusercontent.com/43498633/49782110-d8530b00-fd1d-11e8-8d51-6819e3db1bd1.png)
+![menu](https://user-images.githubusercontent.com/43498633/50052617-5dc82800-012f-11e9-8f5d-fd3f9a8940cf.png)
 
-## In order to test another test please click on clean
+# For example:
 
-### For example:
+## BFS
+![BFS](https://user-images.githubusercontent.com/43498633/50052624-759fac00-012f-11e9-9ef9-55de6b26137f.png)
 
-![startTest](https://user-images.githubusercontent.com/43498633/49782168-18b28900-fd1e-11e8-8259-f97a2ecffbe2.png)
+## BFS 2 Ways
+![BFS 2 Ways](https://user-images.githubusercontent.com/43498633/50052627-83553180-012f-11e9-8ba4-7f4f1449c920.png)
 
-![testEnd](https://user-images.githubusercontent.com/43498633/49782209-3253d080-fd1e-11e8-95fa-95f240437924.png)
+## DFS
+![DFS](https://user-images.githubusercontent.com/43498633/50052629-9405a780-012f-11e9-9d1e-b3714c3fdf9d.png)
 
-### OR
-
-![dfsRun](https://user-images.githubusercontent.com/43498633/49782245-50213580-fd1e-11e8-83c0-96c17d3dec26.png)
-
-![dfsRunDone](https://user-images.githubusercontent.com/43498633/49782252-5adbca80-fd1e-11e8-8876-8842e6b27cd0.png)
+## A Star
+![A Star](https://user-images.githubusercontent.com/43498633/50052631-9e27a600-012f-11e9-9825-6606531670f2.png)
