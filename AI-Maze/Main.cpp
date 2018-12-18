@@ -107,22 +107,42 @@ void Clean()
 				maze[i][j] = SPACE;
 		}
 	}
+	Point2D *temp;
+	Point2D_hg temp2;
 	while (!grayFromStart.empty())
+	{
+		temp = grayFromStart[0];
 		grayFromStart.erase(grayFromStart.begin());
+		if (maze[temp->GetY()][temp->GetX()] != START)
+			delete(temp);
+	}
 	while (!grayFromEnd.empty())
+	{
+		temp = grayFromEnd[0];
 		grayFromEnd.erase(grayFromEnd.begin());
+		if (maze[temp->GetY()][temp->GetX()] != TARGET)
+			delete(temp);
+	}
 	while (!pq.empty())
+	{
+		temp2 = pq.top();
 		pq.pop();
+	}
 }
 
 void ShowPath(Point2D* pt)
 {
 	if (pt != NULL)
+	{
+		Point2D* temp;
 		while (maze[pt->GetY()][pt->GetX()] != START)
 		{
 			maze[pt->GetY()][pt->GetX()] = PATH;
+			temp = pt;
 			pt = parent[pt->GetY()][pt->GetX()];
+			delete(temp);
 		}
+	}
 }
 
 void BfsIteration()
